@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NeuroMap AI - Premium Medical Diagnostic Dashboard</title>
+  <meta name="description" content="AI-powered brain tumor classification and localization platform using TensorFlow and Grad-CAM.">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="dark-theme">
+  <!-- Particle background effects -->
+  <canvas id="particles-canvas"></canvas>
+
+  <div class="app-container dark-theme" id="app-wrapper">
+    
+    <!-- ---------------------------------------------------------
+         LEFT SIDEBAR: Navigation & Diagnosis History
+         --------------------------------------------------------- -->
+    <aside class="sidebar" aria-label="Dashboard navigation">
+      
+      <!-- Brand Logo Header -->
+      <div class="brand-section">
+        <div class="logo-wrapper">
+          <div class="logo-glow"></div>
+          <!-- Futuristic Neural Brain logo -->
+          <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="var(--color-accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"></path>
+            <path d="M12 6v12"></path>
+            <path d="M8 10h8"></path>
+            <path d="M12 10a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"></path>
+            <path d="M12 18a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"></path>
+          </svg>
+        </div>
+        <h1>NeuroMap AI</h1>
+      </div>
+
+      <!-- Navigation tabs -->
+      <nav class="sidebar-nav" aria-label="Primary Actions">
+        <button class="nav-item active" data-tab="workspace">
+          <i data-lucide="layout-dashboard"></i>
+          <span>Workspace</span>
+        </button>
+        <button class="nav-item" data-tab="analytics" id="btn-mock-analytics">
+          <i data-lucide="activity"></i>
+          <span>Model Analytics</span>
+        </button>
+        <button class="nav-item" data-tab="system" id="btn-mock-system">
+          <i data-lucide="cpu"></i>
+          <span>System Diagnostics</span>
+        </button>
+      </nav>
+
+      <!-- Diagnosis History List -->
+      <section class="history-section">
+        <div class="history-header">
+          <h3>Inference History</h3>
+          <button class="clear-history-btn" id="clear-history-btn" title="Clear all history">
+            <i data-lucide="trash-2"></i>
+            <span>Clear</span>
+          </button>
+        </div>
+        <div class="history-list" id="history-list" aria-live="polite">
+          <!-- History items will be loaded dynamically here via JavaScript -->
+          <div class="history-empty-state" id="history-empty">
+            <i data-lucide="database"></i>
+            <p>No processed scans found in LocalStorage.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Sidebar footer with system status and theme controls -->
+      <footer class="sidebar-footer">
+        <button class="theme-toggle-btn" id="theme-toggle-btn" aria-label="Toggle Light/Dark Theme">
+          <i data-lucide="sun" id="theme-toggle-icon"></i>
+          <span id="theme-toggle-text">Light Mode</span>
+        </button>
+        <div class="system-status-indicator">
+          <span class="status-dot"></span>
+          <span>GPU Online</span>
+        </div>
+      </footer>
+    </aside>
+
+    <!-- ---------------------------------------------------------
+         MAIN CONTENT AREA
+         --------------------------------------------------------- -->
+    <main class="main-content">
+      
+      <!-- Top header with EKG wave -->
+      <header class="workspace-header">
+        <div class="header-title-area">
+          <h2>Neural Diagnostic Workspace</h2>
+          <p>Volumetric MRI Tumor Detection & Classification Core</p>
+        </div>
+        <div class="header-right">
+          <!-- Active Heartbeat ECG Line -->
+          <div class="heartbeat-box" id="heartbeat-box" aria-hidden="true">
+            <svg viewBox="0 0 100 30" width="120" height="36" preserveAspectRatio="none">
+              <path class="heartbeat-line" d="M0,15 L20,15 L25,5 L30,25 L35,12 L40,17 L45,15 L70,15 L75,5 L80,25 L85,12 L90,17 L95,15 L100,15"></path>
+            </svg>
+          </div>
+          <div class="header-stats-strip">
+            <span>Core: <b>ResNet-18</b></span>
+            <span>Classes: <b>4</b></span>
+            <span>Engine: <b>TF 2.12</b></span>
+          </div>
+        </div>
+      </header>
+
+      <!-- Grid workspace -->
+      <div class="workspace-grid">
+        
+        <!-- Left Side: Inputs & Reports -->
+        <div class="grid-column-left" style="display: flex; flex-direction: column; gap: 32px;">
+          
+          <!-- Card 1: Scan Loader (Drag-and-Drop) -->
+          <section class="card" id="loader-card">
+            <div class="card-header">
+              <div class="card-title-group">
+                <div class="card-icon-box">
+                  <i data-lucide="upload-cloud"></i>
+                </div>
+                <div>
+                  <h3>MRI Image Loader</h3>
+                  <p class="card-subtitle">Upload T2-weighted MRI brain scan</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Drag & drop zone -->
+            <div class="upload-zone" id="dropzone" tabindex="0" role="button" aria-label="Drag and drop or click to upload MRI image">
+              <input type="file" id="imageInput" accept="image/*" hidden>
+              
+              <div class="upload-icon-anim" id="upload-icon-container">
+                <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"></path>
+                </svg>
+              </div>
+
+              <!-- Thumbnail view container -->
+              <div class="preview-thumbnail-wrapper" id="preview-thumbnail-wrapper" style="display: none;">
+                <img class="preview-thumbnail" id="preview-thumb-img" alt="MRI scan preview">
+                <div class="remove-file-badge" id="remove-file-btn" title="Remove selected image" aria-label="Remove image">
+                  <i data-lucide="x" style="width: 14px; height: 14px;"></i>
+                </div>
+              </div>
+
+              <p class="upload-text" id="upload-status-text">Drag scan here or click to browse</p>
+              <p class="upload-sub">Supports DICOM extracts, PNG, JPG files</p>
+              
+              <!-- Progress container -->
+              <div class="upload-progress-container" id="upload-progress-container" style="display: none;">
+                <div class="upload-progress-bar" id="upload-progress-bar"></div>
+              </div>
+            </div>
+
+            <div class="action-button-wrapper">
+              <button class="btn-glowing-gradient" id="predictBtn" disabled>
+                <i data-lucide="shield-alert" id="predict-btn-icon"></i>
+                <span id="predict-btn-text">INSPECT MRI SCAN</span>
+              </button>
+            </div>
+          </section>
+
+          <!-- Card 2: AI Analysis Report -->
+          <section class="card" id="report-card">
+            <div class="card-header">
+              <div class="card-title-group">
+                <div class="card-icon-box">
+                  <i data-lucide="file-text"></i>
+                </div>
+                <div>
+                  <h3>AI Analysis Report</h3>
+                  <p class="card-subtitle">Detailed neural diagnostic output</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Report fields -->
+            <div class="report-grid">
+              <div class="report-item">
+                <span class="report-label">Diagnosis</span>
+                <span class="report-value" id="report-prediction">—</span>
+              </div>
+              <div class="report-item">
+                <span class="report-label">Confidence</span>
+                <span class="report-value highlight-tag" id="report-confidence">—</span>
+              </div>
+              <div class="report-item">
+                <span class="report-label">Inference Time</span>
+                <span class="report-value" id="report-time">—</span>
+              </div>
+              <div class="report-item">
+                <span class="report-label">Model Engine</span>
+                <span class="report-value" id="report-model">ResNet-18 Core</span>
+              </div>
+              <div class="report-item">
+                <span class="report-label">Image Resolution</span>
+                <span class="report-value" id="report-resolution">—</span>
+              </div>
+              <div class="report-item">
+                <span class="report-label">Timestamp</span>
+                <span class="report-value" id="report-timestamp">—</span>
+              </div>
+            </div>
+
+            <!-- Legal/Clinical Disclaimer -->
+            <div class="disclaimer-box">
+              <i data-lucide="alert-triangle"></i>
+              <p>Research Preview Only. Predictions must be verified by a certified radiologist before clinicial intervention.</p>
+            </div>
+
+            <!-- Action buttons -->
+            <div class="report-action-buttons">
+              <button class="btn-secondary-action" id="download-report-btn" disabled>
+                <i data-lucide="download"></i>
+                <span>Download Report</span>
+              </button>
+              <button class="btn-secondary-action" id="copy-prediction-btn" disabled>
+                <i data-lucide="clipboard"></i>
+                <span>Copy Summary</span>
+              </button>
+              <button class="btn-secondary-action" id="download-gradcam-btn" disabled>
+                <i data-lucide="image"></i>
+                <span>Save Heatmap</span>
+              </button>
+            </div>
+          </section>
+        </div>
+
+        <!-- Right Side: Visualization & Metrics -->
+        <div class="grid-column-right" style="display: flex; flex-direction: column; gap: 32px;">
+          
+          <!-- Card 3: Visual Diagnostic Panel -->
+          <section class="card" id="vision-card">
+            <div class="card-header">
+              <div class="card-title-group">
+                <div class="card-icon-box">
+                  <i data-lucide="eye"></i>
+                </div>
+                <div>
+                  <h3>Interactive Vision Panel</h3>
+                  <p class="card-subtitle">MRI scans and Grad-CAM activations</p>
+                </div>
+              </div>
+              
+              <!-- Tabs for different visualization methods -->
+              <div class="tabs-nav" role="tablist">
+                <button class="tab-btn active" data-tab-target="tab-raw" role="tab" aria-selected="true">Raw MRI</button>
+                <button class="tab-btn" data-tab-target="tab-gradcam" role="tab" aria-selected="false">Grad-CAM</button>
+                <button class="tab-btn" data-tab-target="tab-split" role="tab" aria-selected="false">Split Slider</button>
+              </div>
+            </div>
+
+            <!-- TAB: Raw MRI View -->
+            <div class="tab-content active" id="tab-raw">
+              <div class="visualizer-viewport">
+                <div class="scan-laser-overlay" id="raw-laser-overlay">
+                  <div class="laser-beam"></div>
+                  <div class="grid-sweep"></div>
+                </div>
+                <img id="raw-preview-img" style="display: none;" alt="MRI Brain Scan Raw View">
+                <div class="visualizer-empty" id="raw-empty">
+                  <i data-lucide="image"></i>
+                  <p>Awaiting MRI scan upload</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- TAB: Grad-CAM View -->
+            <div class="tab-content" id="tab-gradcam">
+              <div class="visualizer-viewport">
+                <div class="scan-laser-overlay" id="gradcam-laser-overlay">
+                  <div class="laser-beam"></div>
+                  <div class="grid-sweep"></div>
+                </div>
+                <img id="gradcam-preview-img" style="display: none;" alt="Grad-CAM Tumor Localization Heatmap">
+                <div class="visualizer-empty" id="gradcam-empty">
+                  <i data-lucide="flame"></i>
+                  <p>Inference required to generate attention map</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- TAB: Before/After Split View -->
+            <div class="tab-content" id="tab-split">
+              <div class="visualizer-viewport">
+                <div class="slider-wrapper" id="slider-wrapper" style="display: none;">
+                  <img class="slider-img-background" id="slider-raw-img" alt="Background raw MRI">
+                  <div class="slider-img-overlay" id="slider-img-overlay">
+                    <img id="slider-grad-img" alt="Foreground Grad-CAM overlay">
+                  </div>
+                  <!-- Vertical Draggable Bar -->
+                  <div class="slider-handle" id="slider-handle">
+                    <div class="slider-handle-button">
+                      <i data-lucide="arrow-left-right" style="width: 14px; height: 14px;"></i>
+                    </div>
+                  </div>
+                  <span class="slider-badge raw-badge">RAW SCAN</span>
+                  <span class="slider-badge gradcam-badge">GRAD-CAM ACTIVATION</span>
+                </div>
+                <div class="visualizer-empty" id="slider-empty">
+                  <i data-lucide="columns-2"></i>
+                  <p>Complete prediction to enable slide comparison</p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Card 4: AI Confidence & Probability Spectrum -->
+          <section class="card" id="metrics-card">
+            <div class="card-header">
+              <div class="card-title-group">
+                <div class="card-icon-box">
+                  <i data-lucide="bar-chart-3"></i>
+                </div>
+                <div>
+                  <h3>AI Diagnostics Metrics</h3>
+                  <p class="card-subtitle">Top prediction and confidence spectrum</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="diagnostics-body">
+              
+              <!-- Typing effect prediction text -->
+              <div class="prediction-marquee-box">
+                <span class="pred-title-label">Primary Diagnostic Classification</span>
+                <div class="prediction-value-text">
+                  <span id="predicted-class-text">—</span><span class="prediction-caret"></span>
+                </div>
+              </div>
+
+              <!-- Confidence Gauge -->
+              <div class="gauge-wrapper">
+                <div class="gauge-svg-box">
+                  <svg viewBox="0 0 120 120">
+                    <circle class="gauge-svg-track" cx="60" cy="60" r="54"></circle>
+                    <circle class="gauge-svg-fill" id="gauge-circle" cx="60" cy="60" r="54"></circle>
+                  </svg>
+                  <div class="gauge-center-content">
+                    <div class="gauge-percentage-number">
+                      <span id="gauge-percentage-text">0</span><span class="gauge-percentage-symbol">%</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="gauge-info-text">
+                  <h4>Classification Confidence</h4>
+                  <p>Calculated by top Softmax output probability layer of neural architecture.</p>
+                </div>
+              </div>
+
+              <!-- Probability Spectrum -->
+              <div class="probability-bars-box">
+                <span class="pred-title-label" style="margin-bottom: 4px;">Probability Breakdown</span>
+                
+                <!-- Glioma Bar -->
+                <div class="prob-row">
+                  <span class="prob-name">Glioma</span>
+                  <div class="prob-track">
+                    <div class="prob-fill glioma" id="bar-glioma"></div>
+                  </div>
+                  <span class="prob-value" id="val-glioma">0%</span>
+                </div>
+
+                <!-- Meningioma Bar -->
+                <div class="prob-row">
+                  <span class="prob-name">Meningioma</span>
+                  <div class="prob-track">
+                    <div class="prob-fill meningioma" id="bar-meningioma"></div>
+                  </div>
+                  <span class="prob-value" id="val-meningioma">0%</span>
+                </div>
+
+                <!-- Pituitary Bar -->
+                <div class="prob-row">
+                  <span class="prob-name">Pituitary</span>
+                  <div class="prob-track">
+                    <div class="prob-fill pituitary" id="bar-pituitary"></div>
+                  </div>
+                  <span class="prob-value" id="val-pituitary">0%</span>
+                </div>
+
+                <!-- No Tumor Bar -->
+                <div class="prob-row">
+                  <span class="prob-name">No Tumor</span>
+                  <div class="prob-track">
+                    <div class="prob-fill notumor" id="bar-notumor"></div>
+                  </div>
+                  <span class="prob-value" id="val-notumor">0%</span>
+                </div>
+
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <footer class="site-footer" role="contentinfo">
+        <p>NeuroMap Clinical Platform &copy; 2026. Built by RAH.</p>
+        <p>Designed in compliance with DICOM & HL7 Visualization guidelines. <a href="#" id="shortcut-help-link">Keyboard Shortcuts</a></p>
+      </footer>
+    </main>
+  </div>
+
+  <!-- ---------------------------------------------------------
+       LIGHTBOX ZOOM MODAL
+       --------------------------------------------------------- -->
+  <dialog class="lightbox-modal" id="zoom-lightbox" aria-modal="true" aria-labelledby="lightbox-title-text">
+    <div class="lightbox-card">
+      <div class="lightbox-header">
+        <div class="lightbox-title">
+          <h4 id="lightbox-title-text">High-Resolution MRI Volumetric Analysis</h4>
+        </div>
+        <button class="lightbox-close-btn" id="lightbox-close-btn" aria-label="Close zoomed view">
+          <i data-lucide="x" style="width: 20px; height: 20px;"></i>
+        </button>
+      </div>
+      <div class="lightbox-body">
+        
+        <!-- Zoomable Area -->
+        <div class="lightbox-zoom-viewport" id="lightbox-zoom-viewport">
+          <img class="lightbox-zoom-image" id="lightbox-zoom-image" src="" alt="High resolution enlarged MRI view">
+          
+          <!-- Control bar inside zoom -->
+          <div class="lightbox-zoom-controls">
+            <button class="lightbox-zoom-btn" id="lightbox-zoom-in" title="Zoom in">
+              <i data-lucide="zoom-in" style="width: 18px; height: 18px;"></i>
+            </button>
+            <button class="lightbox-zoom-btn" id="lightbox-zoom-out" title="Zoom out">
+              <i data-lucide="zoom-out" style="width: 18px; height: 18px;"></i>
+            </button>
+            <button class="lightbox-zoom-btn" id="lightbox-zoom-reset" title="Reset zoom">
+              <i data-lucide="maximize" style="width: 18px; height: 18px;"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Details pane inside zoom -->
+        <div class="lightbox-details-panel">
+          <div class="lightbox-details-section">
+            <h5>Pathology localization</h5>
+            <p>The Grad-CAM attention overlay highlights the convolutional features influencing the ResNet classification. Red hot zones mark structural anomalies matching voxel intensity patterns.</p>
+          </div>
+          <div class="lightbox-details-section">
+            <h5>Pixel Spatial Dimensions</h5>
+            <p>Standardized 224x224 input crop. Rescaling and normalization coefficients applied prior to neural tensor generation.</p>
+          </div>
+          <div class="lightbox-details-section">
+            <h5>Interactive Navigation</h5>
+            <p>Click and drag within the viewport to pan. Use mousewheel or zoom controls to inspect localized tissue textures.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- ---------------------------------------------------------
+       TOAST ALERTS SYSTEM
+       --------------------------------------------------------- -->
+  <div class="toast-container" id="toast-container" aria-live="polite"></div>
+
+  <!-- Lucide icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Client side Javascript logic -->
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

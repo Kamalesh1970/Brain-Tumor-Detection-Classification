@@ -1,0 +1,13 @@
+model/
+uploads/
+static/gradcam/
+__pycache__/
+*.pyc
+*.keras
+.venv
+.env
+.env.local
+.env.*.local
+__pycache__
+*.pkl
+*.pyc
